@@ -1,4 +1,4 @@
-# 🛰 CYBERINTEL — SecurityTrails Scanner
+# 🛰 FalconIntel-Pro — SecurityTrails Scanner
 
 A professional cybersecurity-themed web application for domain and IP intelligence gathering using the SecurityTrails API.
 
