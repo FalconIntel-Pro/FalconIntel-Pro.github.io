@@ -210,6 +210,33 @@ async function fetchWithTimeout(url, options = {}) {
   }
 }
 
+
+function isSameOrigin(url) {
+  try {
+    return new URL(url, window.location.origin).origin === window.location.origin;
+  } catch (_) {
+    return false;
+  }
+}
+
+function getApiBaseUrl() {
+  const proxy = (CONFIG.PROXY_URL || "").trim();
+  if (proxy) return proxy.replace(/\/$/, "");
+
+  if (CONFIG.REQUIRE_PROXY !== false && !isSameOrigin(CONFIG.BASE_URL)) {
+    throw new Error(
+      "Direct browser calls to SecurityTrails are blocked by CORS. Configure CONFIG.PROXY_URL to a backend proxy endpoint."
+    );
+  }
+
+  return (CONFIG.BASE_URL || "").replace(/\/$/, "");
+}
+
+function buildApiUrl(path) {
+  const base = getApiBaseUrl();
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 async function fetchData(target, type) {
   const apiKey = state.apiKey;
   if (!apiKey) throw new Error("No API key configured. Please enter your SecurityTrails API key in the sidebar.");
@@ -225,9 +252,9 @@ async function fetchData(target, type) {
   if (type === "domain") {
     // Parallel fetch domain + DNS info
     const [infoRes, dnsRes, subdomainsRes] = await Promise.allSettled([
-      fetchWithTimeout(`${CONFIG.BASE_URL}/domain/${target}`, { headers }),
-      fetchWithTimeout(`${CONFIG.BASE_URL}/domain/${target}/dns/a`, { headers }),
-      fetchWithTimeout(`${CONFIG.BASE_URL}/domain/${target}/subdomains?children_only=false&include_inactive=false`, { headers }),
+      fetchWithTimeout(buildApiUrl(`/domain/${target}`), { headers }),
+      fetchWithTimeout(buildApiUrl(`/domain/${target}/dns/a`), { headers }),
+      fetchWithTimeout(buildApiUrl(`/domain/${target}/subdomains?children_only=false&include_inactive=false`), { headers }),
     ]);
 
     if (infoRes.status === "fulfilled") {
@@ -251,8 +278,8 @@ async function fetchData(target, type) {
   } else {
     // IP scan
     const [infoRes, domainsRes] = await Promise.allSettled([
-      fetchWithTimeout(`${CONFIG.BASE_URL}/ips/nearby/${target}`, { headers }),
-      fetchWithTimeout(`${CONFIG.BASE_URL}/ips/${target}/domains?page=1`, { headers }),
+      fetchWithTimeout(buildApiUrl(`/ips/nearby/${target}`), { headers }),
+      fetchWithTimeout(buildApiUrl(`/ips/${target}/domains?page=1`), { headers }),
     ]);
 
     if (infoRes.status === "fulfilled") {
@@ -731,7 +758,7 @@ async function runScan() {
         errorMsg = `API Error ${err.status}: ${err.message}`;
       }
     } else if (err.message) {
-      errorMsg = err.message;
+      errorMsg = err.message.includes("CORS") ? `${err.message} Until proxy is configured, run scans without an API key to use demo mode.` : err.message;
     }
 
     showError(errorMsg);
@@ -816,7 +843,7 @@ async function pingApi() {
   DOM.pingBtn.disabled = true;
 
   try {
-    const res = await fetchWithTimeout(`${CONFIG.BASE_URL}/ping`, {
+    const res = await fetchWithTimeout(buildApiUrl(`/ping`), {
       headers: { "APIKEY": key, "Content-Type": "application/json" },
     });
 
@@ -831,7 +858,7 @@ async function pingApi() {
     if (e.name === "AbortError") {
       showApiStatus("error", "✗ TIMEOUT: API did not respond");
     } else {
-      showApiStatus("error", `✗ NETWORK ERROR: ${e.message}`);
+      showApiStatus("error", e.message.includes("CORS") ? `✗ ${e.message}` : `✗ NETWORK ERROR: ${e.message}`);
     }
   } finally {
     DOM.pingBtn.disabled = false;
