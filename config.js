@@ -15,7 +15,7 @@
 const CONFIG = {
   // Replace with your SecurityTrails API key
   // Get yours at: https://securitytrails.com/app/account/credentials
-  API_KEY: "",
+  API_KEY: "FOaAZo_dRrJgtrHubuS-xCwD1LxlxGLH",
 
   // API base URL
   BASE_URL: "https://api.securitytrails.com/v1",
