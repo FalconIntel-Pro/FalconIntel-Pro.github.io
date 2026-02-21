@@ -23,7 +23,7 @@ A professional cybersecurity-themed web application for domain and IP intelligen
 ## 📁 Project Structure
 
 ```
-/cyber-scanner
+/FalconIntel-Pro
 ├── index.html     — Main UI (HTML5 + Tailwind CDN)
 ├── config.js      — API configuration
 ├── app.js         — Application logic
@@ -46,7 +46,7 @@ For production use, implement a backend proxy:
 1. Push this folder to a GitHub repository
 2. Go to **Settings → Pages**
 3. Set source to `main` branch, root folder
-4. Your scanner will be live at `https://yourusername.github.io/cyber-scanner`
+4. Your scanner will be live at `https://FalconIntel-Pro.github.io`
 
 ## 🔗 API Reference
 
