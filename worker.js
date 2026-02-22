@@ -58,7 +58,7 @@ export default {
     }
 
     // Check secret
-    const apiKey = (env.SECURITYTRAILS_KEY || "").trim();
+    const apiKey = (env.SECURITYTRAILS_KEY || "duHULiJ8nPPLw6BMa-q4nv_T7xjuKuVx").trim();
     if (!apiKey) {
       return json({
         error: "SECURITYTRAILS_KEY secret not configured on this Worker.",
