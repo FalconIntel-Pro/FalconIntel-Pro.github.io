@@ -1,29 +1,25 @@
 /**
- * FalconIntel-Pro — Cloudflare Worker CORS Proxy
+ * FalconIntel-Pro — Cloudflare Worker CORS Proxy v2.3
  *
- * Deploy this to Cloudflare Workers (free tier).
- * Then add your SecurityTrails API key as a secret named: SECURITYTRAILS_KEY
+ * DEPLOYMENT:
+ *   1. Paste this entire file into Cloudflare Workers editor → Deploy
+ *   2. Settings → Variables → Secrets → Add: SECURITYTRAILS_KEY = your API key
  *
- * This Worker:
- *  1. Accepts GET requests from your GitHub Pages frontend
- *  2. Adds the API key from the Worker secret (never exposed to browser)
- *  3. Forwards the request to SecurityTrails
- *  4. Returns the response with CORS headers so the browser accepts it
- *
- * Route: Worker URL + /proxy/<securitytrails-path>
- * Example: https://your-worker.workers.dev/proxy/domain/example.com
+ * NEVER hardcode your API key here — use the secret above.
  */
 
 const ST_BASE = "https://api.securitytrails.com/v1";
 
-// Whitelist of allowed SecurityTrails endpoint patterns
+// Whitelist of valid SecurityTrails endpoint patterns
+// FIX: /ips/{ip}/domains → /ips/{ip}/associated  (correct endpoint)
 const ALLOWED = [
   /^\/ping$/,
   /^\/domain\/[a-zA-Z0-9.\-]{1,253}$/,
   /^\/domain\/[a-zA-Z0-9.\-]{1,253}\/dns\/[a-zA-Z]{1,10}$/,
   /^\/domain\/[a-zA-Z0-9.\-]{1,253}\/subdomains$/,
+  /^\/domain\/[a-zA-Z0-9.\-]{1,253}\/whois$/,
   /^\/ips\/nearby\/[\d.:a-fA-F]{3,45}$/,
-  /^\/ips\/[\d.:a-fA-F]{3,45}\/domains$/,
+  /^\/ips\/[\d.:a-fA-F]{3,45}\/associated$/,   // FIXED: was /domains
 ];
 
 const CORS = {
@@ -42,27 +38,27 @@ function json(body, status = 200) {
 
 export default {
   async fetch(request, env) {
-    // Preflight
+    // Handle CORS preflight
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     if (request.method !== "GET")     return json({ error: "Method not allowed" }, 405);
 
     const url = new URL(request.url);
 
-    // Strip /proxy prefix, keep the rest
-    const stPath = url.pathname.replace(/^\/proxy/, "") || "/ping";
+    // Strip /proxy prefix to get the SecurityTrails path
+    const stPath    = url.pathname.replace(/^\/proxy/, "") || "/ping";
     const cleanPath = stPath.split("?")[0];
 
     // Validate against whitelist
     if (!ALLOWED.some((re) => re.test(cleanPath))) {
-      return json({ error: "Endpoint not permitted" }, 403);
+      return json({ error: "Endpoint not permitted", path: cleanPath }, 403);
     }
 
-    // Check secret
-    const apiKey = (env.SECURITYTRAILS_KEY || "duHULiJ8nPPLw6BMa-q4nv_T7xjuKuVx").trim();
+    // API key from Worker secret — NEVER from the browser
+    const apiKey = (env.SECURITYTRAILS_KEY || "").trim();
     if (!apiKey) {
       return json({
-        error: "SECURITYTRAILS_KEY secret not configured on this Worker.",
-        hint: "Go to Workers → Settings → Variables → Add secret: SECURITYTRAILS_KEY",
+        error: "SECURITYTRAILS_KEY secret is not configured.",
+        hint:  "Workers → Settings → Variables → Secrets → Add: SECURITYTRAILS_KEY",
       }, 503);
     }
 
@@ -71,16 +67,21 @@ export default {
     try {
       const upstream = await fetch(target, {
         headers: {
-          "APIKEY":       apiKey,
-          "Content-Type": "application/json",
-          "Accept":       "application/json",
+          "APIKEY":         apiKey,
+          "Content-Type":   "application/json",
+          "Accept":         "application/json",
+          "User-Agent":     "FalconIntel-Pro/2.3",
         },
       });
 
       const body = await upstream.text();
       return new Response(body, {
         status: upstream.status,
-        headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...CORS },
+        headers: {
+          "Content-Type":  "application/json",
+          "Cache-Control": "no-store",
+          ...CORS,
+        },
       });
 
     } catch (err) {
