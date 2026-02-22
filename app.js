@@ -295,23 +295,26 @@ async function fetchData(target, type) {
       results.subdomains = await subRes.value.json();
 
   } else {
-    const [nearbyRes, domainsRes] = await Promise.allSettled([
+    // FIX: correct endpoints are /ips/nearby/{ip} and /ips/{ip}/associated
+    // /ips/{ip}/domains does NOT exist → was causing 404s
+    const [nearbyRes, associatedRes] = await Promise.allSettled([
       fetchWithTimeout(buildUrl(`/ips/nearby/${target}`), { headers }),
-      fetchWithTimeout(buildUrl(`/ips/${target}/domains?page=1`), { headers }),
+      fetchWithTimeout(buildUrl(`/ips/${target}/associated?page=1`), { headers }),
     ]);
 
     if (nearbyRes.status === "fulfilled") {
-      if (!nearbyRes.value.ok) {
-        const err = await nearbyRes.value.json().catch(() => ({}));
-        throw new APIError(nearbyRes.value.status, err.message || nearbyRes.value.statusText, err);
+      if (nearbyRes.value.ok) {
+        results.ipInfo = await nearbyRes.value.json();
       }
-      results.ipInfo = await nearbyRes.value.json();
-    } else {
+      // 404 on nearby just means no neighbor data — not a fatal error for IP scans
+    }
+
+    if (!results.ipInfo && nearbyRes.status !== "fulfilled") {
       throw new Error(`Network error: ${nearbyRes.reason?.message || "Request failed"}`);
     }
 
-    if (domainsRes.status === "fulfilled" && domainsRes.value.ok)
-      results.ipDomains = await domainsRes.value.json();
+    if (associatedRes.status === "fulfilled" && associatedRes.value.ok)
+      results.ipAssociated = await associatedRes.value.json();
   }
 
   return results;
@@ -342,12 +345,16 @@ function getDemoData(target, type) {
     ipInfo: {
       blocks: [{ network: target + "/24", cidr: target + "/24", name: "EXAMPLE-NET", organization: "Example Org", allocation: "allocated", created: "2000-01-01T00:00:00.000Z" }],
     },
-    ipDomains: {
+    // /v1/ips/{ip}/associated returns: { records: [{hostname, alexa_rank, whois}], record_count, pages }
+    ipAssociated: {
       record_count: 15,
+      pages: 1,
       records: [
-        { hostname: "example.com" },
-        { hostname: "example.net" },
-        { hostname: "example.org" },
+        { hostname: "example.com",  alexa_rank: null, whois: { registrar: "MarkMonitor Inc." } },
+        { hostname: "example.net",  alexa_rank: null, whois: { registrar: "MarkMonitor Inc." } },
+        { hostname: "example.org",  alexa_rank: null, whois: { registrar: "MarkMonitor Inc." } },
+        { hostname: "example.info", alexa_rank: null, whois: { registrar: "MarkMonitor Inc." } },
+        { hostname: "example.co",   alexa_rank: null, whois: { registrar: "MarkMonitor Inc." } },
       ],
     },
   };
@@ -446,37 +453,47 @@ function renderDomainResults(data, target) {
 }
 
 function renderIpResults(data, target) {
-  const blocks = data.ipInfo?.blocks || [];
-  const domainData = data.ipDomains || {};
-  const domains = domainData.records || [];
+  const blocks  = data.ipInfo?.blocks || [];
+  const assocData = data.ipAssociated || {};
+  const domains   = assocData.records || [];
 
   const b = blocks[0] || {};
   renderSection({ id: "sec-ip", icon: "🌍", title: "IP INFORMATION", color: "cyan",
     rows: [
-      { key: "ip address", value: target, highlight: true },
-      { key: "cidr block", value: b.cidr || b.network || "—" },
-      { key: "organization", value: b.organization || b.name || "—", highlight: true },
-      { key: "allocation", value: b.allocation || "—" },
-      { key: "created", value: b.created ? b.created.substring(0, 10) : "—" },
+      { key: "ip address",   value: target,                               highlight: true },
+      { key: "cidr block",   value: b.cidr     || b.network    || "—" },
+      { key: "organization", value: b.organization || b.name   || "—",   highlight: true },
+      { key: "allocation",   value: b.allocation              || "—" },
+      { key: "created",      value: b.created ? b.created.substring(0, 10) : "—" },
     ],
   });
 
   if (blocks.length) renderSection({ id: "sec-org", icon: "🏢", title: "ORGANIZATION DATA", color: "green",
     rows: [
-      { key: "name", value: b.name || b.organization || "—" },
-      { key: "network", value: b.network || "—" },
-      { key: "allocation", value: b.allocation || "—" },
+      { key: "name",       value: b.name       || b.organization || "—" },
+      { key: "network",    value: b.network                      || "—" },
+      { key: "allocation", value: b.allocation                   || "—" },
     ],
   });
 
-  if (domains.length) renderSection({ id: "sec-dom", icon: "🔗", title: `ASSOCIATED DOMAINS (${domainData.record_count || domains.length})`, color: "cyan",
-    custom: `<div class="section-content">
-      <div class="flex flex-wrap gap-1">
-        ${domains.slice(0, 20).map((d) => `<span class="cyber-tag">${escapeHtml(d.hostname)}</span>`).join("")}
-      </div>
-      ${domainData.record_count > 20 ? `<p class="font-mono text-xs text-slate-600 mt-2">+${domainData.record_count - 20} more domains on this IP</p>` : ""}
-    </div>`,
-  });
+  if (domains.length) {
+    const totalCount = assocData.record_count || domains.length;
+    const shown = domains.slice(0, 25);
+    const extra = totalCount - shown.length;
+    renderSection({ id: "sec-dom", icon: "🔗", title: `ASSOCIATED DOMAINS (${totalCount})`, color: "cyan",
+      custom: `<div class="section-content">
+        <div class="flex flex-wrap gap-1">
+          ${shown.map((d) => `<span class="cyber-tag">${escapeHtml(d.hostname)}</span>`).join("")}
+        </div>
+        ${extra > 0 ? `<p class="font-mono text-xs text-slate-600 mt-2">+${extra} more domains associated with this IP</p>` : ""}
+      </div>`,
+    });
+  } else {
+    // No associated domains found — show informational row
+    renderSection({ id: "sec-dom", icon: "🔗", title: "ASSOCIATED DOMAINS", color: "cyan",
+      rows: [{ key: "status", value: "No domains associated with this IP in SecurityTrails database" }],
+    });
+  }
 }
 
 function renderSection({ id, icon, title, color, rows, custom }) {
