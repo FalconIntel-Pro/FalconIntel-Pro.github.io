@@ -1,20 +1,13 @@
 /**
- * FalconIntel-Pro — Configuration v2.3
+ * FalconIntel-Pro — Configuration v2.4
  *
- * ⚠️  SECURITY: Do NOT put your API key here.
- *     It lives as a Cloudflare Worker secret (SECURITYTRAILS_KEY).
- *     Anything in this file is PUBLIC in your GitHub repo.
+ * ⚠️  Do NOT put your API key here — it's public in your GitHub repo.
+ *     Your SecurityTrails key lives as a secret on the Cloudflare Worker.
  */
-
 const CONFIG = {
-  // Your deployed Cloudflare Worker URL + /proxy
-  // Example: "https://falconintel-proxy.inbox-ashen.workers.dev/proxy"
-  PROXY_URL: "https://falconintel-proxy.inbox-ashen.workers.dev/proxy",
-
-  // Never put a real key here — left blank intentionally
-  API_KEY: "",
-
+  PROXY_URL:  "https://falconintel-proxy.inbox-ashen.workers.dev/proxy",
+  API_KEY:    "",   // intentionally empty — key is a Worker secret
   BASE_URL:   "https://api.securitytrails.com/v1",
   TIMEOUT_MS: 15000,
-  VERSION:    "2.3.0",
+  VERSION:    "2.4.0",
 };
