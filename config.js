@@ -1,32 +1,20 @@
 /**
- * FalconIntel-Pro — Configuration
+ * FalconIntel-Pro — Configuration v2.3
  *
- * ⚠️ SECURITY WARNING:
- * The API_KEY field below is intentionally left empty.
- * Your SecurityTrails API key is stored securely as a Cloudflare Worker secret
- * (SECURITYTRAILS_KEY) and is NEVER exposed in frontend code.
- *
- * All API requests are routed through the CORS proxy Worker below.
- * Do NOT paste your API key here — it will be publicly visible in your GitHub repo.
+ * ⚠️  SECURITY: Do NOT put your API key here.
+ *     It lives as a Cloudflare Worker secret (SECURITYTRAILS_KEY).
+ *     Anything in this file is PUBLIC in your GitHub repo.
  */
 
 const CONFIG = {
-  // ─── PROXY ─────────────────────────────────────────────────────────────────
-  // Your Cloudflare Worker CORS proxy URL.
-  // Requests go: Browser → Worker (adds API key) → SecurityTrails → back.
-  // Leave empty to use demo mode (no real data).
-  PROXY_URL: "https://falconintel-proxy.inbox-ashen.workers.dev/proxy/", // ← PASTE YOUR WORKER URL HERE after deploying
+  // Your deployed Cloudflare Worker URL + /proxy
+  // Example: "https://falconintel-proxy.inbox-ashen.workers.dev/proxy"
+  PROXY_URL: "https://falconintel-proxy.inbox-ashen.workers.dev/proxy",
 
-  // ─── LEGACY / LOCAL DEV ────────────────────────────────────────────────────
-  // Only used if PROXY_URL is empty AND you want live data without a proxy.
-  // NEVER commit a real key here — it will be publicly visible in your GitHub repo.
-  API_KEY: "duHULiJ8nPPLw6BMa-q4nv_T7xjuKuVx",
+  // Never put a real key here — left blank intentionally
+  API_KEY: "",
 
-  // SecurityTrails API base (used by the Worker server-side only, not the browser)
-  BASE_URL: "https://api.securitytrails.com/v1",
-
-  // Request timeout in milliseconds
+  BASE_URL:   "https://api.securitytrails.com/v1",
   TIMEOUT_MS: 15000,
-
-  VERSION: "2.2.0",
+  VERSION:    "2.3.0",
 };
