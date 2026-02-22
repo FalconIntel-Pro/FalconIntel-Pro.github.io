@@ -15,12 +15,12 @@ const CONFIG = {
   // Your Cloudflare Worker CORS proxy URL.
   // Requests go: Browser → Worker (adds API key) → SecurityTrails → back.
   // Leave empty to use demo mode (no real data).
-  PROXY_URL: "", // ← PASTE YOUR WORKER URL HERE after deploying
+  PROXY_URL: "https://falconintel-proxy.inbox-ashen.workers.dev/proxy/", // ← PASTE YOUR WORKER URL HERE after deploying
 
   // ─── LEGACY / LOCAL DEV ────────────────────────────────────────────────────
   // Only used if PROXY_URL is empty AND you want live data without a proxy.
   // NEVER commit a real key here — it will be publicly visible in your GitHub repo.
-  API_KEY: "",
+  API_KEY: "duHULiJ8nPPLw6BMa-q4nv_T7xjuKuVx",
 
   // SecurityTrails API base (used by the Worker server-side only, not the browser)
   BASE_URL: "https://api.securitytrails.com/v1",
