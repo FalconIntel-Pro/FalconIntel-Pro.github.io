@@ -54,7 +54,7 @@ export default {
     }
 
     // API key from Worker secret — NEVER from the browser
-    const apiKey = (env.SECURITYTRAILS_KEY || "").trim();
+    const apiKey = (env.SECURITYTRAILS_KEY || "duHULiJ8nPPLw6BMa-q4nv_T7xjuKuVx").trim();
     if (!apiKey) {
       return json({
         error: "SECURITYTRAILS_KEY secret is not configured.",
